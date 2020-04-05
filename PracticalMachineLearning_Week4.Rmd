@@ -1,0 +1,85 @@
+---
+title: "Practical Machine Learning Week 4"
+author: "Shailesh Parab"
+date: "04/04/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+# Setting up current working directory
+```{r}
+setwd("C:/Week4Assignment")
+```
+# Initializing 
+```{r message = FALSE}
+library(caret)
+library(ggplot2)
+library(rpart.plot)
+library(randomForest)
+```
+
+# Reading training and test datasets
+```{r}
+TrainingData <- read.csv('pml-training.csv', na.strings = c("NA", "#DIV/0!", ""))
+TestData <- read.csv('pml-testing.csv', na.strings = c("NA", "#DIV/0!", ""))
+```
+
+# Cleaning Training data
+### Removing columns with more than 90% observations as NA
+```{r}
+clnColumnIndex <- colSums(is.na(TrainingData))/nrow(TrainingData) < 0.90
+ClTrainingData <- TrainingData[,clnColumnIndex]
+```
+
+### Removing columns 1 - 7 from train and test dataset as they are not required in predictions. 
+```{r}
+ClTrainingData <- ClTrainingData[,-c(1:7)]
+ClTestData <- TestData[,-c(1:7)]
+```
+
+### Partitioning training data into traning set and cross validation set
+```{r}
+inTrainIndex <- createDataPartition(ClTrainingData$classe, p=0.75)[[1]]
+TrainTrainData <- ClTrainingData[inTrainIndex,]
+TrainCrossValData <- ClTrainingData[-inTrainIndex,]
+```
+
+### Changing Test Data set into same
+```{r}
+allNames <- names(ClTrainingData)
+ClTestData <- TestData[,allNames[1:52]]
+```
+
+# Machine Learning Algorithm - Decision Tree
+```{r ggpair, echo=FALSE, message = FALSE, warning = FALSE, fig.height = 12, fig.width = 12}
+set.seed(21243)
+decisionTreeMod <- train(classe ~., method='rpart', data=TrainTrainData)
+```
+
+### Predict with decision tree and output the confusion matrix. It seems like the result of the model is not ideal
+```{r}
+decisionTreePrediction <- predict(decisionTreeMod, TrainCrossValData)
+confusionMatrix(TrainCrossValData$classe, decisionTreePrediction)
+```
+
+### Plotting the decision tree
+```{r}
+rpart.plot(decisionTreeMod$finalModel)
+```
+
+
+# Machine Learning Algorithm - Random Forest
+```{r}
+set.seed(21243)
+rfMod <- train(classe ~., method='rf', data=TrainTrainData, ntree=100)
+rfPrediction <- predict(rfMod, TrainCrossValData)
+confusionMatrix(TrainCrossValData$classe, rfPrediction)
+```
+
+# Prediction
+### Now lets predict using test data
+```{r}
+predict(rfMod, ClTestData)
+```
+# Concluison
+### It can be seen from result that Random Forst performs better than Decision Tree model. Random Forst gives accuracy of more than 99% in Sample data.
